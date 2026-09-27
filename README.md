@@ -1,105 +1,121 @@
-# Remote Support Tool (RAT)
+# Remote Support Tool
 
-A consent-based remote support agent for IT/admin management.
+A consent-based remote support agent for authorized IT administration and lab environments.
 
-## Features
+> **Important:** Use this project only on systems you own or are explicitly authorized to manage. It is not intended for covert access, persistence, credential theft, or unauthorized monitoring.
 
-- **Secure**: TLS encrypted communication
-- **Token Authentication**: Shared secret token validation
-- **Command Allowlist**: Only safe commands can be executed (hostname, whoami, uptime, uname, ls, pwd)
-- **Audit Logging**: All actions logged locally
-- **Easy Setup**: One-liner setup script
+## Highlights
+
+- 🔐 TLS-encrypted client/server communication
+- 🎫 Shared-token authentication
+- ✅ Allowlisted, read-only diagnostic commands
+- 🧾 Local audit logging for server and agent activity
+- ⚙️ Simple setup using a shell script
+- 🐍 Lightweight Python implementation
+
+## Project Layout
+
+| File | Purpose |
+| --- | --- |
+| `server.py` | Runs the support server and handles connected agents |
+| `agent.py` | Runs on an authorized managed device |
+| `common.py` | Shared serialization and logging helpers |
+| `setup.sh` | Creates the local support directories and test certificates |
+
+## Requirements
+
+- Python 3.9+
+- OpenSSL
+- Linux/macOS shell environment for `setup.sh`
+- A network connection between the authorized server and agent
 
 ## Quick Start
 
-### 1. Setup (one time)
+### 1. Prepare the environment
 
 ```bash
 chmod +x setup.sh
 ./setup.sh
 ```
 
-This creates:
-- `~/remote_support/logs/` directory
-- SSL certificates in `~/remote_support/`
+The setup script creates `~/remote_support/`, its log directory, and local TLS certificates.
 
-### 2. Run Server (Terminal 1)
+### 2. Start the server
 
-```bash
-REMOTE_TOKEN="super-secure-token" python server.py
-```
-
-You should see:
-```
-Listening on 0.0.0.0:9000
-```
-
-### 3. Run Agent (Terminal 2)
+In one terminal:
 
 ```bash
-REMOTE_TOKEN="super-secure-token" REMOTE_HOST="127.0.0.1" python agent.py
+export REMOTE_TOKEN="replace-with-a-long-random-token"
+python server.py
 ```
 
-Agent will connect and wait for commands.
+### 3. Start the agent
 
-## Usage
+In a second terminal, on the authorized device:
 
-### Send Command from Server
-
-Add this to `server.py` or create an interactive CLI:
-
-```python
-from server import send_command
-
-# Send command to a connected client
-result = send_command("hostname-of-device", "whoami")
-print(result)
+```bash
+export REMOTE_TOKEN="replace-with-the-same-token"
+export REMOTE_HOST="127.0.0.1"
+python agent.py
 ```
+
+Set `REMOTE_HOST` to the server's address when the server and agent run on different machines. Do not expose the service to the public internet without adding suitable network controls and authentication.
 
 ## Configuration
 
-Environment variables:
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `REMOTE_TOKEN` | Yes | — | Shared authentication token |
+| `REMOTE_HOST` | Agent only | `127.0.0.1` | Server hostname or IP address |
+| `REMOTE_PORT` | No | `9000` | Listening/connection port |
 
-- `REMOTE_TOKEN` - Shared authentication token (required)
-- `REMOTE_HOST` - Server IP/hostname (agent only, default: 127.0.0.1)
-- `REMOTE_PORT` - Port to use (default: 9000)
+Use a long, unique token and provide it through a secure secret-management method in real deployments. Never commit secrets to Git.
+
+## Allowed Diagnostics
+
+The agent currently restricts execution to these predefined commands:
+
+- `hostname`
+- `whoami`
+- `uptime`
+- `uname -a`
+- `ls`
+- `pwd`
+
+Do not expand the allowlist to arbitrary shell input. Any additional command should be narrowly defined, validated, documented, and protected by an explicit approval workflow.
 
 ## Logs
 
-Logs are stored in:
-- `~/remote_support/logs/server.log` - Server events
-- `~/remote_support/logs/agent.log` - Agent events
+Runtime logs are stored under:
 
-## Allowed Commands
+- `~/remote_support/logs/server.log`
+- `~/remote_support/logs/agent.log`
 
-Currently allowed:
-- `hostname` - Get device hostname
-- `whoami` - Get current user
-- `uptime` - Get system uptime
-- `uname -a` - Get system info
-- `ls` - List files
-- `pwd` - Get current directory
+Protect these logs because they may contain hostnames, usernames, timestamps, and operational details.
 
-To add more commands, edit the `allowed_command()` function in `agent.py`.
+## Security and Consent
 
-## Security Notes
+This repository is intended for authorized support, testing, and educational use only. Before running an agent:
 
-⚠️ **For Testing Only**:
-- Uses self-signed certificates
-- No mTLS validation
-- Token stored in environment variable
+1. Obtain clear consent from the device owner or administrator.
+2. Explain what information can be collected and which actions are available.
+3. Provide a visible way to stop the agent.
+4. Restrict network access to trusted hosts and networks.
+5. Rotate tokens and certificates when access changes.
+6. Review and retain audit logs according to your organization's policy.
 
-**For Production**:
-- Use proper PKI certificates
-- Enable mTLS validation
-- Use JWT or OAuth tokens
-- Implement command approval workflow
-- Add user consent prompts on managed devices
-- Restrict to specific admin users
+The current setup uses self-signed certificates and environment-based token authentication. It is **not production-ready**. Before production use, add certificate validation or mTLS, stronger identity and authorization, secure secret storage, rate limiting, approval prompts, and comprehensive tests.
 
-## Files
+## Development Checklist
 
-- `common.py` - Shared utilities (JSON serialization, logging)
-- `server.py` - Central control server
-- `agent.py` - Client agent installed on managed devices
-- `setup.sh` - One-time setup script
+- [ ] Test only in an isolated lab or explicitly authorized environment
+- [ ] Verify certificate validation and hostname checking
+- [ ] Add an operator authentication and approval flow
+- [ ] Add agent-side consent and stop controls
+- [ ] Add automated tests and dependency pinning
+- [ ] Review logs for sensitive data
+- [ ] Run static analysis and security scanning
+
+## License
+
+No license has been declared yet. Add a license before distributing or accepting contributions.
